@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Metallic Fixed Table</title>
+<style>
+:root{
+  --row-height: 40px;
+  --col-width: 160px;
+  --gap: 8px;
+  --bg-black: #000;
+  --text-color: #eaeaea;
+  --header-z: 50;
+  --sticky-first-z: 40;
+  --font-scale: clamp(12px, 1.6vw, 18px);
+}
+
+html,body{
+  height:100%;
+  margin:0;
+  background:var(--bg-black);
+  color:var(--text-color);
+  font-family: -apple-system, "Helvetica Neue", "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif;
+  font-size: var(--font-scale);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+.page { display:flex; flex-direction:column; padding-bottom: calc(var(--row-height)+18px); box-sizing:border-box; min-height:100%; }
+.table-wrapper { overflow:auto; width:100%; -webkit-overflow-scrolling:touch; }
+table { border-collapse:collapse; table-layout: fixed; width: calc(var(--col-width)*5); min-width:640px; margin:0; }
+
+thead th {
+  position: sticky; top:0; z-index: var(--header-z);
+  height: var(--row-height); line-height: var(--row-height);
+  text-align:center; font-weight:600;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.6);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  box-sizing:border-box;
+}
+
+tbody tr { height: var(--row-height); transition: transform 180ms ease, box-shadow 180ms ease; will-change: transform, box-shadow; }
+tbody tr.data-row:hover { transform: translateY(-4px); box-shadow: 0 8px 18px rgba(0,0,0,0.6); }
+
+th, td {
+  padding:4px; box-sizing:border-box;
+  height:var(--row-height); vertical-align:middle; text-align:center;
+  width: var(--col-width); min-width: var(--col-width); max-width: var(--col-width);
+  overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+  border-right:1px solid rgba(255,255,255,0.03);
+}
+
+/* Sticky first column */
+td:first-child, th:first-child { position:sticky; left:0; z-index: var(--sticky-first-z); box-shadow: 2px 0 6px rgba(0,0,0,0.6); }
+
+/* Column gradient backgrounds */
+.col-dest, thead .col-dest { background: linear-gradient(to bottom, #8a7ca0, #5c4e70); }
+.col-normal, thead .col-normal { background: linear-gradient(to bottom, #5c9bbf, #2f5c70); }
+.col-jpr, thead .col-jpr { background: linear-gradient(to bottom, #c27c5c, #4f3a2a); }
+.col-haz, thead .col-haz { background: linear-gradient(to bottom, #6c996c, #304230); }
+.col-high, thead .col-high { background: linear-gradient(to bottom, #b9a665, #5d5030); }
+
+/* Select styles */
+.select-wrap { position:relative; display:inline-block; width:100%; height:100%; }
+.select-wrap::after { content:"▾"; position:absolute; right:10px; top:50%; transform:translateY(-50%); pointer-events:none; color: rgba(255,255,255,0.9); font-size:0.9em; }
+
+.dest-select {
+  -webkit-appearance: none; -moz-appearance: none; appearance:none;
+  border:none; background: transparent; color: inherit;
+  height: calc(var(--row-height)-8px); line-height: calc(var(--row-height)-8px);
+  padding:6px 12px; border-radius:10px; box-sizing:border-box; font-size:0.95em;
+  outline:none; cursor:pointer;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.03), rgba(0,0,0,0.06));
+  text-align: center;
+  text-align-last: center;
+}
+.dest-select option { text-align:center; }
+
+.cell-buttons { display:flex; gap:8px; justify-content:center; align-items:center; }
+
+.num-btn {
+  min-width:48px; height:28px; padding:0 10px; border-radius:14px; border:none;
+  color:#fff; font-weight:600; cursor:pointer;
+  box-shadow:0 6px 12px rgba(0,0,0,0.45), inset 0 -2px rgba(0,0,0,0.12);
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+  display:inline-flex; align-items:center; justify-content:center; user-select:none; -webkit-tap-highlight-color: transparent;
+}
+.num-btn:active { transform: translateY(1px) scale(0.98); box-shadow:0 3px 6px rgba(0,0,0,0.5) inset; }
+
+.dec-btn { width:36px; border-radius:10px; padding:0; }
+
+.col-normal .num-btn { background: linear-gradient(to bottom, #5c9bbf, #2f5c70); }
+.col-jpr .num-btn { background: linear-gradient(to bottom, #c27c5c, #4f3a2a); }
+.col-haz .num-btn { background: linear-gradient(to bottom, #6c996c, #304230); }
+.col-high .num-btn { background: linear-gradient(to bottom, #b9a665, #5d5030); }
+
+/* Bottom menu */
+.bottom-menu {
+  position:fixed; left:0; right:0; bottom:0; height: calc(var(--row-height)+8px);
+  display:flex; gap:12px; justify-content:center; align-items:center;
+  padding:8px; background:rgba(0,0,0,0.9); border-top:1px solid rgba(255,255,255,0.03); z-index:200;
+  box-sizing:border-box;
+}
+.menu-btn {
+  min-width:120px; height: var(--row-height); border-radius:12px; border:none;
+  color:#fff; font-weight:700; font-size:0.95em; cursor:pointer;
+  box-shadow:0 10px 18px rgba(0,0,0,0.6), inset 0 -3px rgba(0,0,0,0.12);
+  transition: transform 140ms ease, box-shadow 140ms ease, opacity 140ms ease;
+  background: linear-gradient(to bottom, #444, #111);
+}
+.menu-btn:active { transform: translateY(1px) scale(0.995); }
+.btn-add { background: linear-gradient(to bottom, #2b7f5b, #1b523a); }
+.btn-del { background: linear-gradient(to bottom, #7f2b2b, #4a1a1a); }
+
+/* Responsive */
+@media (max-width:520px){ :root { --col-width:140px; } .num-btn { min-width:42px; height:26px; } .dec-btn { width:34px; } }
+
+.sr-only { position:absolute; left:-9999px; top:auto; width:1px; height:1px; overflow:hidden; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="table-wrapper" id="tableContainer" tabindex="0" aria-label="配送テーブル">
+    <table id="metalTable" role="table" aria-describedby="tableDesc">
+      <thead>
+        <tr>
+          <th class="col-dest">行先</th>
+          <th class="col-normal">普通</th>
+          <th class="col-jpr">JPR</th>
+          <th class="col-haz">hazmat</th>
+          <th class="col-high">高積</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <!-- Initial 4 data rows generated by JS later -->
+      </tbody>
+    </table>
+  </div>
+
+  <div class="bottom-menu" role="toolbar" aria-label="テーブル操作">
+    <button id="addRowBtn" class="menu-btn btn-add" aria-label="行を追加">Add Row</button>
+    <button id="delRowBtn" class="menu-btn btn-del" aria-label="行を削除">Delete Row</button>
+  </div>
+</div>
+
+<script>
+(function(){
+const tableBody = document.getElementById('tableBody');
+const addBtn = document.getElementById('addRowBtn');
+const delBtn = document.getElementById('delRowBtn');
+
+const defaultOptions = [
+ "QCB1", "QCB2", "QCB3", "QCB4", "QCB5", "TYO1", "TYO2", "TYO4", "TY06", "TYO7", "TYO8", "TYO9", "NRT1", "FSZ1","HND2", "HND3", "HND6","RJE1", "HND9","TPB1", "TPB2","ТРВ3", "TPB4", "TPB5", "ТРВ6", "ТРВ7", "ТРВ9", "TPY1", "TPY2", "ТРYЗ", "ТРY5", "TPZ1", "TPZ3", "TPZ6",  "TPX2", "NRT2", "HSG1", "KIXI", "KIX2", "KIX3", "KIX5", "KIX6", "NG02"
+];
+
+function createDataRow() {
+  const tr = document.createElement('tr'); tr.className='data-row';
+  // Column 1
+  const td1 = document.createElement('td'); td1.className='col-dest';
+  const wrap = document.createElement('div'); wrap.className='select-wrap';
+  const select = document.createElement('select'); select.className='dest-select'; select.setAttribute('aria-label','行先');
+  defaultOptions.forEach(o=>{ const opt=document.createElement('option'); opt.textContent=o; select.appendChild(opt); });
+  wrap.appendChild(select); td1.appendChild(wrap); tr.appendChild(td1);
+  // Columns 2-5
+  const colInfo = [
+    {cls:'col-normal', label:'普通'},
+    {cls:'col-jpr', label:'JPR'},
+    {cls:'col-haz', label:'hazmat'},
+    {cls:'col-high', label:'高積'}
+  ];
+  colInfo.forEach(info=>{
+    const td = document.createElement('td'); td.className=info.cls;
+    const wrapper=document.createElement('div'); wrapper.className='cell-buttons';
+    const dec=document.createElement('button'); dec.className='num-btn dec-btn'; dec.type='button'; dec.textContent='−'; dec.setAttribute('aria-label', info.label+' 減らす');
+    const num=document.createElement('button'); num.className='num-btn'; num.type='button'; num.textContent='0'; num.dataset.value='0'; num.setAttribute('aria-label', info.label+' 数量');
+    wrapper.appendChild(dec); wrapper.appendChild(num); td.appendChild(wrapper); tr.appendChild(td);
+  });
+  attachCellHandlers(tr);
+  return tr;
+}
+
+function attachCellHandlers(rowEl){
+  const decs = rowEl.querySelectorAll('.dec-btn');
+  const nums = rowEl.querySelectorAll('.cell-buttons .num-btn:not(.dec-btn)');
+  decs.forEach((decBtn, idx)=>{
+    const numBtn = nums[idx];
+    decBtn.addEventListener('click', ()=>{
+      let v=parseInt(numBtn.dataset.value||'0',10);
+      v=Math.max(0,v-1); numBtn.dataset.value=String(v); numBtn.textContent=String(v);
+    }, {passive:true});
+  });
+  nums.forEach((numBtn, idx)=>{
+    const decBtn = decs[idx];
+    numBtn.addEventListener('click', ()=>{
+      let v=parseInt(numBtn.dataset.value||'0',10);
+      v=v+1; numBtn.dataset.value=String(v); numBtn.textContent=String(v);
+    }, {passive:true});
+
+    let autoTimer=null, autoInterval=null;
+    numBtn.addEventListener('pointerdown',(e)=>{
+      if(e.button!==0) return;
+      autoTimer=setTimeout(()=>{ autoInterval=setInterval(()=>{
+        let v=parseInt(numBtn.dataset.value||'0',10); v=v+1;
+        numBtn.dataset.value=String(v); numBtn.textContent=String(v);
+      },120);},400);
+    });
+    const clearAuto=()=>{ if(autoTimer){clearTimeout(autoTimer);autoTimer=null;} if(autoInterval){clearInterval(autoInterval);autoInterval=null;}};
+    numBtn.addEventListener('pointerup',clearAuto); numBtn.addEventListener('pointerleave',clearAuto); numBtn.addEventListener('pointercancel',clearAuto);
+
+    decBtn.addEventListener('pointerdown',(e)=>{
+      if(e.button!==0) return;
+      autoTimer=setTimeout(()=>{ autoInterval=setInterval(()=>{
+        let v=parseInt(numBtn.dataset.value||'0',10); v=Math.max(0,v-1);
+        numBtn.dataset.value=String(v); numBtn.textContent=String(v);
+      },150);},450);
+    });
+    decBtn.addEventListener('pointerup',clearAuto); decBtn.addEventListener('pointerleave',clearAuto); decBtn.addEventListener('pointercancel',clearAuto);
+  });
+}
+
+// Initialize 4 rows
+for(let i=0;i<4;i++){ tableBody.appendChild(createDataRow()); }
+
+addBtn.addEventListener('click', ()=>{
+  const newRow=createDataRow(); tableBody.appendChild(newRow);
+  newRow.scrollIntoView({behavior:'smooth', block:'nearest'});
+  announce(tableBody.querySelectorAll('tr.data-row').length+' 行になりました');
+});
+delBtn.addEventListener('click', ()=>{
+  const rows = tableBody.querySelectorAll('tr.data-row');
+  if(rows.length<=1){ delBtn.animate([{transform:'translateX(0)'},{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'translateX(0)'}],{duration:260,iterations:1}); return; }
+  rows[rows.length-1].remove();
+  announce(rows.length-1+' 行になりました');
+});
+
+// Offscreen announcement
+function announce(msg){
+  let el=document.getElementById('tableDesc');
+  if(!el){ el=document.createElement('div'); el.id='tableDesc'; el.className='sr-only'; document.body.appendChild(el); }
+  el.textContent=msg;
+}
+
+// Horizontal arrow scrolling
+const tableContainer=document.getElementById('tableContainer');
+tableContainer.addEventListener('keydown',(e)=>{
+  if(e.key==='ArrowLeft') tableContainer.scrollBy({left:-120,behavior:'smooth'});
+  if(e.key==='ArrowRight') tableContainer.scrollBy({left:120,behavior:'smooth'});
+});
+
+})();
+</script>
+</body>
+</html>
